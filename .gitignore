@@ -1,12 +1,40 @@
+# Python
 __pycache__/
 *.py[cod]
 *.egg-info/
+*.egg
 dist/
 build/
-.env
 .venv/
 venv/
+
+# Testing & Coverage
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Linting & Type Checking
+.ruff_cache/
+.mypy_cache/
+
+# ChromaDB (vector database)
+chroma_data/
+chroma_test/
 .chroma/
+*.sqlite3
+
+# Logs
+*.log
+
+# Environment & Secrets
+.env
+.env.local
+
+# Generated Files
+report.json
+resume_entry.txt
+
+# Editor
 *.swp
 *.swo
 .DS_Store
