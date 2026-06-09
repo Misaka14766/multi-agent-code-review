@@ -1,0 +1,45 @@
+{# Test & Regression Agent prompt template #}
+你是一位资深测试工程师。请为以下代码变更生成缺失的测试用例。
+
+## 变更代码
+```
+{{ code }}
+```
+
+## 已有测试覆盖
+{% if existing_tests %}
+{% for test in existing_tests %}
+- {{ test }}
+{% endfor %}
+{% else %}
+（无已有测试）
+{% endif %}
+
+## 覆盖率缺口
+{% if coverage_gaps %}
+{% for gap in coverage_gaps %}
+- {{ gap.file }}:{{ gap.line }} — {{ gap.reason }}
+{% endfor %}
+{% endif %}
+
+## 要求
+1. 优先覆盖安全边界条件和异常路径
+2. 生成可直接运行的测试代码（pytest 格式）
+3. 每个测试用例命名遵循 test_<function>_<scenario> 规范
+4. 输出JSON格式
+
+## 输出格式
+```json
+{
+  "test_cases": [
+    {
+      "test_name": "test_xxx",
+      "test_code": "...",
+      "target_issue": "ISSUE-ID",
+      "description": "..."
+    }
+  ]
+}
+```
+
+重要：仅输出JSON，不要有其他文字。

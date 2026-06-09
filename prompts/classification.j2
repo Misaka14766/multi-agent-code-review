@@ -1,0 +1,30 @@
+{# Change classification prompt template #}
+你是一位代码审查协调员。请对以下PR变更进行分类。
+
+## PR信息
+- 标题: {{ pr_title }}
+- 描述: {{ pr_description }}
+- 变更文件: {{ changed_files | join(", ") }}
+
+## 变更Diff摘要
+```
+{{ diff_summary }}
+```
+
+## 要求
+1. 判断主要变更类型（security/logic/config/ui/test/docs/refactor/dependency）
+2. 评估风险分数 (0.0-1.0)
+3. 推荐需要调度的Agent
+
+## 输出格式
+```json
+{
+  "primary_type": "...",
+  "secondary_types": ["..."],
+  "affected_modules": ["..."],
+  "risk_score": 0.0,
+  "recommended_agents": ["..."]
+}
+```
+
+重要：仅输出JSON，不要有其他文字。

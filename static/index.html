@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Multi-Agent Code Review - Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0d1117; color: #c9d1d9; min-height: 100vh; }
+        .container { max-width: 1200px; margin: 0 auto; padding: 24px; }
+        h1 { font-size: 24px; margin-bottom: 8px; color: #58a6ff; }
+        .subtitle { color: #8b949e; margin-bottom: 24px; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; margin-bottom: 24px; }
+        .card { background: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 20px; }
+        .card .label { font-size: 12px; color: #8b949e; text-transform: uppercase; margin-bottom: 8px; }
+        .card .value { font-size: 28px; font-weight: 600; }
+        .card .value.blocked { color: #f85149; }
+        .card .value.pass { color: #3fb950; }
+        .card .value.info { color: #58a6ff; }
+        .chart-container { background: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 20px; margin-bottom: 16px; }
+        .status { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 12px; font-weight: 600; }
+        .status.healthy { background: #238636; color: #fff; }
+        .status.degraded { background: #9e6a03; color: #fff; }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { text-align: left; padding: 12px 16px; border-bottom: 1px solid #30363d; }
+        th { color: #8b949e; font-size: 12px; text-transform: uppercase; }
+        .error { background: #f851491a; color: #f85149; padding: 12px; border-radius: 8px; margin-top: 16px; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1>Multi-Agent Code Review</h1>
+    <p class="subtitle">Dashboard &mdash; <span id="agentStatus" class="status">loading...</span></p>
+
+    <div class="grid">
+        <div class="card">
+            <div class="label">Total Reviews</div>
+            <div class="value info" id="totalReviews">--</div>
+        </div>
+        <div class="card">
+            <div class="label">Blocked</div>
+            <div class="value blocked" id="blockedCount">--</div>
+        </div>
+        <div class="card">
+            <div class="label">Passed</div>
+            <div class="value pass" id="passedCount">--</div>
+        </div>
+        <div class="card">
+            <div class="label">Issues Found</div>
+            <div class="value info" id="totalIssues">--</div>
+        </div>
+    </div>
+
+    <div class="chart-container" style="height:300px">
+        <canvas id="verdictChart"></canvas>
+    </div>
+
+    <div class="chart-container">
+        <h3 style="margin-bottom:16px">Recent Reviews</h3>
+        <table>
+            <thead><tr><th>Review ID</th><th>PR</th><th>Verdict</th><th>Issues</th></tr></thead>
+            <tbody id="historyBody"></tbody>
+        </table>
+    </div>
+
+    <div id="errorMsg" class="error" style="display:none"></div>
+</div>
+
+<script>
+async function loadDashboard() {
+    try {
+        const [healthRes, statsRes, historyRes] = await Promise.all([
+            fetch('/api/v1/health'),
+            fetch('/api/v1/dashboard/stats'),
+            fetch('/api/v1/dashboard/history?limit=10'),
+        ]);
+        const health = await healthRes.json();
+        const stats = await statsRes.json();
+        const history = await historyRes.json();
+
+        document.getElementById('agentStatus').textContent = health.status;
+        document.getElementById('agentStatus').className = 'status ' + (health.status === 'healthy' ? 'healthy' : 'degraded');
+        document.getElementById('totalReviews').textContent = stats.total_reviews || '0';
+        document.getElementById('blockedCount').textContent = stats.blocked || '0';
+        document.getElementById('passedCount').textContent = stats.passed || '0';
+        document.getElementById('totalIssues').textContent = stats.total_issues_found || '0';
+
+        new Chart(document.getElementById('verdictChart'), {
+            type: 'doughnut',
+            data: {
+                labels: ['Blocked', 'Passed', 'Pending'],
+                datasets: [{
+                    data: [stats.blocked||0, stats.passed||0, stats.pending||0],
+                    backgroundColor: ['#f85149', '#3fb950', '#30363d'],
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { position: 'bottom', labels: { color: '#c9d1d9' } } }
+            }
+        });
+
+        const tbody = document.getElementById('historyBody');
+        (history.reviews || []).forEach(r => {
+            const tr = document.createElement('tr');
+            const color = r.verdict === 'blocked' ? '#f85149' : r.verdict === 'pass' ? '#3fb950' : '#c9d1d9';
+            tr.innerHTML = `<td><code>${r.review_id}</code></td><td>${r.pr_title||'--'}</td><td style="color:${color}">${r.verdict}</td><td>${r.issues}</td>`;
+            tbody.appendChild(tr);
+        });
+    } catch (e) {
+        document.getElementById('errorMsg').style.display = 'block';
+        document.getElementById('errorMsg').textContent = 'Failed to load dashboard: ' + e.message;
+    }
+}
+loadDashboard();
+</script>
+</body>
+</html>

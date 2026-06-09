@@ -1,0 +1,26 @@
+version: "3.8"
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      - LLM_PROVIDER=mock
+      - DEBUG=false
+      - CHROMA_PERSIST_DIR=/app/chroma_data
+    volumes:
+      - chroma_data:/app/chroma_data
+
+  # Optional: dedicated ChromaDB service (for scaling)
+  # chroma:
+  #   image: chromadb/chroma:latest
+  #   ports:
+  #     - "8001:8000"
+  #   volumes:
+  #     - chroma_data:/chroma/chroma
+
+volumes:
+  chroma_data:

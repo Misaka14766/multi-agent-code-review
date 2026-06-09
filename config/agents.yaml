@@ -1,0 +1,29 @@
+agents:
+  static_analysis:
+    enabled: true
+    timeout_seconds: 30
+    tools:
+      - semgrep
+      - pylint
+      - treesitter
+
+  semantic_review:
+    enabled: true
+    timeout_seconds: 60
+    model: deepseek-chat
+    temperature: 0.1
+    rag:
+      enabled: true
+      top_k: 5
+      min_similarity: 0.7
+
+  test_regression:
+    enabled: true
+    timeout_seconds: 45
+
+  repair_patch:
+    enabled: true
+    timeout_seconds: 60
+    require_human_approval_for:
+      - security
+      - architecture

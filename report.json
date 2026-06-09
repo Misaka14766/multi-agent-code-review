@@ -1,0 +1,177 @@
+{
+  "review_id": "cb7bae41",
+  "pr_title": "Review: src/auth.py",
+  "status": "completed",
+  "summary": {
+    "total_issues": 4,
+    "blockers": 1,
+    "warnings": 2,
+    "suggestions": 0,
+    "info": 1,
+    "verdict": "blocked",
+    "verdict_summary": "发现 1 个阻断级缺陷，共 4 个问题。须修复后方可合并。",
+    "requires_human": true,
+    "repair_attempts": 1,
+    "total_execution_time_ms": 196.9771385192871
+  },
+  "quality_gate": {
+    "verdict": "blocked",
+    "summary": "发现 1 个阻断级缺陷，共 4 个问题。须修复后方可合并。",
+    "blocker_count": 1,
+    "warning_count": 2,
+    "suggestion_count": 0,
+    "requires_human": true,
+    "human_questions": [
+      "安全相关修复需要人工确认后方可应用。"
+    ]
+  },
+  "issues": [
+    {
+      "issue_id": "SA-001",
+      "issue_type": "security",
+      "severity": "blocker",
+      "title": "检测到潜在的SQL注入漏洞（模式匹配）",
+      "description": "Semgrep规则 'python-sql-string-concatenation' 在第45行触发：用户输入通过f-string拼接到SQL查询中。",
+      "location": {
+        "file_path": "src/auth.py",
+        "start_line": 45,
+        "end_line": 45,
+        "ast_path": "FunctionDef:login -> Assign:query -> JoinedStr"
+      },
+      "root_cause": "字符串插值方式构建SQL语句，用户输入未经过滤直接嵌入查询字符串。",
+      "evidence": {
+        "code_snippet": "query = f'SELECT * FROM users WHERE name = \"{username}\"'",
+        "ast_path": "FunctionDef:login -> Assign:query -> JoinedStr",
+        "similar_bug_refs": []
+      },
+      "fix_suggestion": {
+        "unified_diff": "@@ -45 +45 @@\n-query = f'SELECT * FROM users WHERE name = \"{username}\"'\n+query = 'SELECT * FROM users WHERE name = ?'\n+cursor.execute(query, (username,))",
+        "explanation": "使用参数化查询(占位符?)替代字符串拼接。",
+        "references": [
+          {
+            "title": "Semgrep Rule: python-sql-string-concatenation",
+            "url": ""
+          }
+        ]
+      },
+      "confidence": 0.97,
+      "source_agent": "static_analysis",
+      "verification_status": "unverified"
+    },
+    {
+      "issue_id": "TEST-001",
+      "issue_type": "test_coverage",
+      "severity": "warning",
+      "title": "变更代码缺少对应的安全测试用例",
+      "description": "auth.py:login函数新增/修改了认证逻辑，但未发现对应的SQL注入防御测试和输入边界测试。",
+      "location": {
+        "file_path": "src/auth.py",
+        "start_line": 40,
+        "end_line": 75,
+        "ast_path": ""
+      },
+      "root_cause": "代码变更未伴随测试用例更新，测试覆盖率从78%降至71%。",
+      "evidence": {
+        "code_snippet": "# 缺失的测试用例:\n# def test_sql_injection_prevention():\n# def test_login_edge_cases():",
+        "ast_path": "",
+        "similar_bug_refs": []
+      },
+      "fix_suggestion": {
+        "unified_diff": "+# 建议新增测试:\n+def test_sql_injection_prevention():\n+    malicious = \"' OR 1=1 --\"\n+    assert login(malicious, 'any') is None\n+\n+def test_empty_username():\n+    assert login('', 'password') is None",
+        "explanation": "为login函数新增SQL注入防御测试和边界条件测试。",
+        "references": []
+      },
+      "confidence": 0.89,
+      "source_agent": "test_regression",
+      "verification_status": "unverified"
+    },
+    {
+      "issue_id": "SEM-002",
+      "issue_type": "bug",
+      "severity": "warning",
+      "title": "缺少输入校验导致潜在异常",
+      "description": "username和password参数未做类型检查和长度限制，可能导致AttributeError或数据库层异常。",
+      "location": {
+        "file_path": "src/auth.py",
+        "start_line": 42,
+        "end_line": 42,
+        "ast_path": ""
+      },
+      "root_cause": "函数入口缺少防御性编程必需的输入合法性校验。",
+      "evidence": {
+        "code_snippet": "def login(username: str, password: str):",
+        "ast_path": "",
+        "similar_bug_refs": []
+      },
+      "fix_suggestion": null,
+      "confidence": 0.82,
+      "source_agent": "semantic_review",
+      "verification_status": "unverified"
+    },
+    {
+      "issue_id": "SA-003",
+      "issue_type": "style",
+      "severity": "info",
+      "title": "命名规范违规",
+      "description": "变量名 'pw' 过于简短，建议使用 'password' 或 'password_hash'。",
+      "location": {
+        "file_path": "src/auth.py",
+        "start_line": 48,
+        "end_line": 48,
+        "ast_path": ""
+      },
+      "root_cause": "变量命名不符合PEP 8可读性要求。",
+      "evidence": {
+        "code_snippet": "pw = user['password']",
+        "ast_path": "",
+        "similar_bug_refs": []
+      },
+      "fix_suggestion": null,
+      "confidence": 0.92,
+      "source_agent": "static_analysis",
+      "verification_status": "unverified"
+    }
+  ],
+  "patches": [
+    {
+      "patch_id": "PATCH-001",
+      "issue_ids": [
+        "SA-001",
+        "SEM-001"
+      ],
+      "unified_diff": "--- a/src/auth.py\n+++ b/src/auth.py\n@@ -42,7 +42,10 @@ def login(username: str, password: str):\n+    if not isinstance(username, str) or len(username) > 256:\n+        raise ValueError('Invalid username')\n-    query = f'SELECT * FROM users WHERE name = \"{username}\"'\n-    cursor.execute(query)\n+    query = 'SELECT * FROM users WHERE name = ?'\n+    cursor.execute(query, (username,))",
+      "explanation": "修复SQL注入：f-string拼接 -> 参数化查询; 新增输入长度校验",
+      "files_modified": [
+        "src/auth.py"
+      ],
+      "status": "generated"
+    }
+  ],
+  "agent_reports": [
+    {
+      "agent_id": "semantic_review",
+      "agent_name": "Semantic Review Agent",
+      "status": "success",
+      "issues_found": 1,
+      "execution_time_ms": 86.99417114257812
+    },
+    {
+      "agent_id": "static_analysis",
+      "agent_name": "Static Analysis Agent",
+      "status": "success",
+      "issues_found": 2,
+      "execution_time_ms": 54.99148368835449
+    },
+    {
+      "agent_id": "test_regression",
+      "agent_name": "Test & Regression Agent",
+      "status": "success",
+      "issues_found": 1,
+      "execution_time_ms": 54.99148368835449
+    }
+  ],
+  "errors": [],
+  "human_questions": [
+    "安全相关修复需要人工确认后方可应用。"
+  ]
+}
